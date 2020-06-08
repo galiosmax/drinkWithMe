@@ -1,6 +1,7 @@
 package com.example.drinkwithme.viewModel
 
 import android.app.Application
+import android.util.Log
 import androidx.databinding.ObservableField
 import androidx.lifecycle.AndroidViewModel
 import com.example.drinkwithme.R
@@ -16,7 +17,8 @@ import kotlin.math.max
 const val timeLimit = 10000f
 const val defaultValue = "Press any button to continue..."
 
-class ArithmeticViewModel(application: Application, var onFinished: () -> Unit) : AndroidViewModel(application) {
+class ArithmeticViewModel(application: Application, var onFinished: () -> Unit) :
+    AndroidViewModel(application) {
 
     enum class Option {
         A, B, C, D, NONE;
@@ -97,17 +99,16 @@ class ArithmeticViewModel(application: Application, var onFinished: () -> Unit) 
             colorC.set(R.color.black)
             colorD.set(R.color.black)
 
-            isStarted = true
             mTimeLeft.set(timeLimit)
             mStartTime = System.currentTimeMillis()
             thread = TimeLimitThread()
             thread.isRunning = true
             thread.start()
+            isStarted = true
             return
         }
-
-        isStarted = false
         thread.isRunning = false
+        isStarted = false
 
         val isCorrect = chosen == mCorrect
 
@@ -123,7 +124,12 @@ class ArithmeticViewModel(application: Application, var onFinished: () -> Unit) 
         colorC.set(if (mCorrect == Option.C) R.color.green else R.color.red)
         colorD.set(if (mCorrect == Option.D) R.color.green else R.color.red)
 
-        mExpression.set(if (isFinished) "Judging by test, you are ${max(0, 6 - mScore.get()!!)}%% drunk" else defaultValue)
+        mExpression.set(
+            if (isFinished) "Judging by test, you are ${max(
+                0,
+                6 - mScore.get()!!
+            )}%% drunk" else defaultValue
+        )
     }
 
     private fun saveResults() {
@@ -135,7 +141,7 @@ class ArithmeticViewModel(application: Application, var onFinished: () -> Unit) 
                 database.testResultDao()
             )
 
-        val score = mScore.get()?: 6
+        val score = mScore.get() ?: 6
         val testResult = TestResult(score, max(0, 6 - score))
         GlobalScope.launch(Dispatchers.IO) {
             drinkWithMeRepository.insertTestResult(testResult)
@@ -151,9 +157,13 @@ class ArithmeticViewModel(application: Application, var onFinished: () -> Unit) 
         val b = rand.nextInt(bound) + 1
         val c = rand.nextInt(bound) + 1
 
-        mCorrect = Option.getByValue(rand.nextInt(4) + 1)
+        val correctValue = rand.nextInt(4) + 1
 
-        when (Operation.getByValue(rand.nextInt(currentScore) + 1)) {
+        mCorrect = Option.getByValue(correctValue)
+
+        val operationVal = rand.nextInt(currentScore) + 1
+
+        when (Operation.getByValue(operationVal)) {
             Operation.PLUS -> showOptions("$a + $b", a + b)
             Operation.MULTIPLY -> showOptions("$a * $b", a * b)
             Operation.DIVIDE -> showOptions("${a * b} / $b", a)
@@ -170,19 +180,24 @@ class ArithmeticViewModel(application: Application, var onFinished: () -> Unit) 
     private fun showOptions(expression: String, result: Int) {
         mExpression.set(expression)
 
-        var randomFirst = rand.nextInt(result) + result / 2
+        var bound = result
+
+        var randomFirst = rand.nextInt(bound) + result / 2
         while (randomFirst == result) {
-            randomFirst = rand.nextInt(result) + result / 2
+            bound++
+            randomFirst = rand.nextInt(bound) + result / 2
         }
 
-        var randomSecond = rand.nextInt(result) + result / 2
+        var randomSecond = rand.nextInt(bound) + result / 2
         while (randomSecond == result || randomSecond == randomFirst) {
-            randomSecond = rand.nextInt(result) + result / 2
+            bound++
+            randomSecond = rand.nextInt(bound) + result / 2
         }
 
-        var randomThird = rand.nextInt(result) + result / 2
+        var randomThird = rand.nextInt(bound) + result / 2
         while (randomThird == result || randomThird == randomFirst || randomThird == randomSecond) {
-            randomThird = rand.nextInt(result) + result / 2
+            bound++
+            randomThird = rand.nextInt(bound) + result / 2
         }
 
         when (mCorrect) {
